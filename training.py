@@ -13,6 +13,8 @@ def read_menota_annotations_for_spacy():
     l = []
     with codecs.open(os.path.join("data-menota-spacy.json"), "r", encoding="utf-8") as f:
         for line in f:
+            if all([i == "-" for i in line]):
+                continue
             line = json.loads(line)
             l.append(line)
     return l
@@ -49,15 +51,20 @@ def save_training_data(training_data):
 
 
 def reduce_tags(pos_tag: str) -> str:
-    first_part = pos_tag.split(" ")[0]
+    first_part = pos_tag.strip().split(" ")[0]
+    if "|" in first_part:
+        return reduce_tags(first_part.split("|")[0])
     if first_part.startswith("x"):
         return first_part[1:]
+    elif "00000" == first_part:
+        return ""
     else:
         return pos_tag
 
 
 def from_text_annotations_to_spacy_training_data(data):
     l = []
+    labels = set()
     for doc in data:
         ll = []
         for sentence, annotation in doc:
@@ -65,10 +72,12 @@ def from_text_annotations_to_spacy_training_data(data):
                 ll.append(([token.lower() for token in sentence],
                            dict(pos=[reduce_tags(tag) for tag in annotation["pos"]])))
                 # lemmas=annotation["lemmas"]
+                labels.update(set([reduce_tags(tag) for tag in annotation["pos"]]))
             except AttributeError:
                 print(sentence)
                 print(annotation)
         l.extend(ll)
+    print(labels)
     return l
 
 
@@ -82,6 +91,6 @@ if __name__ == "__main__":
     # print(len(vocab))
 
     # print(pos_training_data[0:2])
-    print(len(pos_training_data))
-    print(pos_training_data[0])
+    # print(len(pos_training_data))
+    # print(pos_training_data[0])
     save_training_data(pos_training_data)
